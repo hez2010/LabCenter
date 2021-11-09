@@ -1,6 +1,6 @@
 ﻿@inject IUserService UserService
 @inject GlobalStates States
-@inject ComponentApplicationState ApplicationState
+@inject PersistentComponentState ApplicationState
 @using System.ComponentModel
 @using System.Text.Json
 @implements IDisposable
@@ -13,17 +13,16 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        ApplicationState.OnPersisting += PersistGlobalStates;
+        ApplicationState.RegisterOnPersisting(PersistGlobalStates);
         States.PropertyChanged += ChangeState;
 
         try
         {
-
-            if (ApplicationState.TryTakePersistedState(nameof(States.UserInfo), out var userInfo))
+            if (ApplicationState.TryTakeFromJson<UserInfo>(nameof(States.UserInfo), out var userInfo))
             {
                 try
                 {
-                    States.UserInfo = JsonSerializer.Deserialize<UserInfo>(userInfo);
+                    States.UserInfo = userInfo;
                 }
                 catch
                 {
@@ -45,7 +44,7 @@
 
     private Task PersistGlobalStates()
     {
-        ApplicationState.PersistState(nameof(States.UserInfo), JsonSerializer.SerializeToUtf8Bytes(States.UserInfo));
+        ApplicationState.PersistAsJson(nameof(States.UserInfo), States.UserInfo);
         return Task.CompletedTask;
     }
 
@@ -56,7 +55,6 @@
 
     public void Dispose()
     {
-        ApplicationState.OnPersisting -= PersistGlobalStates;
         States.PropertyChanged -= ChangeState;
     }
 }
